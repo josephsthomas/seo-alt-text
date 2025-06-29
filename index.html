@@ -7,11 +7,8 @@
     <meta name="keywords" content="alt text generator, SEO filename, image accessibility, WCAG compliance, Claude AI, batch image processing">
     <meta name="author" content="Image SEO Tool">
     <meta name="robots" content="noindex, nofollow">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <title>Image Alt Text & SEO Filename Generator - Powered by Claude AI</title>
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>🖼️</text></svg>">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" integrity="sha512-XMVd28F1oH/O71fzwBnV7HucLxVwtxf26XV8P4wPk26EDxuGZ91N8bsOttmnomcCD3CS5ZMRL50H0GgOHvegtg==" crossorigin="anonymous"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.20.1/xlsx.full.min.js" integrity="sha512-qa2R0aXkJJaKg0Ui7LBLd/54XbpI4GsDvRd8IrnyPWKRqQYr4qPKF37Fb3OJ+w7F9jwYn6i1oX8u1XR8mDmMAw==" crossorigin="anonymous"></script>
     <style>
         * {
             margin: 0;
@@ -383,16 +380,6 @@
             text-align: center;
             margin-bottom: 1rem;
             font-weight: 500;
-        }
-        
-        .error {
-            color: #e74c3c;
-            margin-top: 0.5rem;
-        }
-        
-        .success {
-            color: #27ae60;
-            margin-top: 0.5rem;
         }
         
         .instructions {
@@ -815,16 +802,19 @@
                 <button id="prevBtn" onclick="previousStep()" style="background-color: #95a5a6;">← Previous</button>
                 <div style="text-align: center; color: #666;">
                     <span id="stepIndicator">Step 1 of 5</span>
-                    <span style="margin-left: 1rem; font-size: 0.8rem; opacity: 0.7;">v<span id="versionIndicator"></span></span>
+                    <span style="margin-left: 1rem; font-size: 0.8rem; opacity: 0.7;">v<span id="versionIndicator">2.0.0</span></span>
                 </div>
                 <button id="nextBtn" onclick="nextStep()">Next →</button>
             </div>
         </div>
     </div>
     
+    <!-- Load external libraries first -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.20.1/xlsx.full.min.js"></script>
+    
+    <!-- Main application script -->
     <script>
-        // Set version indicator
-        document.getElementById('versionIndicator').textContent = APP_VERSION;
         // Application Configuration
         const APP_VERSION = '2.0.0';
         const IS_PRODUCTION = true;
@@ -1058,61 +1048,6 @@
             updateGlobalStatus('No internet connection', 'error');
         });
         
-        // Load saved API key on page load
-        window.onload = function() {
-            if (!checkBrowserCompatibility()) {
-                document.body.innerHTML = '<div style="padding: 2rem; text-align: center;"><h1>Browser Not Supported</h1><p>Please use a modern browser to access this tool.</p></div>';
-                return;
-            }
-            
-            try {
-                const savedKey = localStorage.getItem('claudeApiKey');
-                if (savedKey) {
-                    // Decode the obfuscated key
-                    const decoded = atob(savedKey);
-                    document.getElementById('apiKey').value = decoded;
-                    apiKey = decoded;
-                    document.getElementById('apiKeyStatus').innerHTML = '<span class="success">✓ API key loaded from storage</span>';
-                }
-                
-                // Load saved session if exists
-                const savedSession = localStorage.getItem('imageProcessingSession');
-                if (savedSession) {
-                    const session = JSON.parse(savedSession);
-                    if (session.timestamp && (Date.now() - session.timestamp < SESSION_DURATION_HOURS * 60 * 60 * 1000)) {
-                        if (confirm('Found a previous session. Would you like to restore it?')) {
-                            processedImages = session.images || [];
-                            if (processedImages.length > 0) {
-                                // Go directly to results
-                                currentStep = 5;
-                                displayResults();
-                            }
-                        } else {
-                            localStorage.removeItem('imageProcessingSession');
-                        }
-                    } else {
-                        // Session expired
-                        localStorage.removeItem('imageProcessingSession');
-                    }
-                }
-            } catch (error) {
-                logError('Error loading saved data:', error);
-                localStorage.removeItem('claudeApiKey'); // Clear corrupted data
-                localStorage.removeItem('imageProcessingSession');
-            }
-            
-            // Initialize wizard
-            initializeWizard();
-            
-            // Set up auto-save
-            setInterval(saveSession, AUTO_SAVE_INTERVAL);
-            
-            // Log version in development
-            if (!IS_PRODUCTION) {
-                console.log(`Image Alt Text Generator v${APP_VERSION}`);
-            }
-        };
-        
         // Session management
         function saveSession() {
             if (processedImages.length > 0 && !isProcessing) {
@@ -1280,7 +1215,7 @@
                 document.getElementById('singleInput').value = '';
                 
             } catch (error) {
-                console.error('Error processing single image:', error);
+                logError('Error processing single image:', error);
                 alert('Error processing image: ' + error.message);
                 document.getElementById('progressContainer').style.display = 'none';
                 updateGlobalStatus('Error processing image', 'error');
@@ -1310,7 +1245,7 @@
             Object.keys(result.altText).forEach(lang => {
                 if (lang !== 'en') {
                     const group = document.createElement('div');
-                    group.className = 'form-group';
+                    group.className = 'field-group';
                     group.innerHTML = `
                         <div class="field-label">
                             <label>Alt Text (${getLanguageName(lang)}):</label>
@@ -1455,14 +1390,35 @@
                 const zip = await JSZip.loadAsync(file);
                 const imageFiles = [];
                 
-                // Extract image files
-                zip.forEach((relativePath, zipEntry) => {
+                // Extract image files with better validation
+                const seenFiles = new Set();
+                const duplicates = [];
+                
+                for (const [relativePath, zipEntry] of Object.entries(zip.files)) {
+                    if (zipEntry.dir) continue;
+                    
                     const ext = relativePath.split('.').pop().toLowerCase();
                     const validExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'heic', 'heif'];
-                    if (validExtensions.includes(ext) && !zipEntry.dir) {
-                        imageFiles.push({ path: relativePath, entry: zipEntry });
+                    
+                    // Skip hidden files and system files
+                    const filename = relativePath.split('/').pop();
+                    if (filename.startsWith('.') || filename.startsWith('__')) continue;
+                    
+                    if (validExtensions.includes(ext)) {
+                        // Check for duplicates
+                        const normalizedName = filename.toLowerCase();
+                        if (seenFiles.has(normalizedName)) {
+                            duplicates.push(filename);
+                        } else {
+                            seenFiles.add(normalizedName);
+                            imageFiles.push({ path: relativePath, entry: zipEntry });
+                        }
                     }
-                });
+                }
+                
+                if (duplicates.length > 0 && !IS_PRODUCTION) {
+                    console.warn('Duplicate files skipped:', duplicates);
+                }
                 
                 if (imageFiles.length === 0) {
                     alert('No valid image files found in the ZIP');
@@ -1470,46 +1426,134 @@
                     return;
                 }
                 
-                if (imageFiles.length > 100) {
-                    alert('Maximum 100 images allowed. Only the first 100 will be processed.');
-                    imageFiles.length = 100;
-                }
-                
-                // Show cost estimate
-                const estimatedCost = calculateCost(imageFiles.length);
-                if (!confirm(`Processing ${imageFiles.length} images will cost approximately ${estimatedCost.toFixed(4)} USD. Continue?`)) {
+                // Check for network connection
+                if (!isOnline) {
+                    alert('No internet connection. Please check your connection and try again.');
                     document.getElementById('progressContainer').style.display = 'none';
                     return;
                 }
                 
-                // Process each image
-                for (let i = 0; i < imageFiles.length; i++) {
-                    updateProgress(i, imageFiles.length, imageFiles[i].path);
+                if (imageFiles.length > MAX_IMAGES) {
+                    const proceed = confirm(`Found ${imageFiles.length} images. Only the first ${MAX_IMAGES} will be processed. Continue?`);
+                    if (!proceed) {
+                        document.getElementById('progressContainer').style.display = 'none';
+                        return;
+                    }
+                    imageFiles.length = MAX_IMAGES;
+                }
+                
+                // Show cost estimate
+                const estimatedCost = calculateCost(imageFiles.length);
+                if (!confirm(`Processing ${imageFiles.length} images will cost approximately $${estimatedCost.toFixed(4)} USD. Continue?`)) {
+                    document.getElementById('progressContainer').style.display = 'none';
+                    return;
+                }
+                
+                // Clear previous event listeners to prevent memory leaks
+                const oldTbody = document.getElementById('resultsBody');
+                const newTbody = oldTbody.cloneNode(false);
+                oldTbody.parentNode.replaceChild(newTbody, oldTbody);
+                
+                // Process images with concurrent limiting
+                let successCount = 0;
+                let errorCount = 0;
+                
+                // Create abort controller for cancellation
+                abortController = new AbortController();
+                
+                // Process in batches
+                for (let i = 0; i < imageFiles.length; i += CONCURRENT_LIMIT) {
+                    if (abortController.signal.aborted) break;
                     
-                    try {
-                        const imageData = await imageFiles[i].entry.async('base64');
-                        const result = await processImage(imageFiles[i].path, imageData);
-                        processedImages.push(result);
-                    } catch (error) {
-                        console.error(`Error processing ${imageFiles[i].path}:`, error);
-                        processedImages.push({
-                            originalName: imageFiles[i].path,
-                            newName: 'error.jpg',
-                            altText: { en: 'Error processing image' },
-                            dimensions: 'N/A',
-                            fileSize: 'N/A',
-                            status: 'Error',
-                            error: error.message
-                        });
+                    const batch = imageFiles.slice(i, Math.min(i + CONCURRENT_LIMIT, imageFiles.length));
+                    const batchPromises = batch.map(async (file, batchIndex) => {
+                        const globalIndex = i + batchIndex;
+                        updateProgress(globalIndex, imageFiles.length, file.path);
+                        
+                        try {
+                            const imageData = await file.entry.async('base64');
+                            
+                            // Validate image size (Claude has a limit)
+                            const imageSizeBytes = Math.round(imageData.length * 0.75);
+                            if (imageSizeBytes > MAX_IMAGE_SIZE_MB * 1024 * 1024) {
+                                throw new Error(`Image exceeds ${MAX_IMAGE_SIZE_MB}MB limit`);
+                            }
+                            
+                            // Validate image data
+                            if (!imageData || imageData.length < 100) {
+                                throw new Error('Invalid or corrupted image data');
+                            }
+                            
+                            const result = await processImage(file.path, imageData);
+                            
+                            if (result.status === 'Success') {
+                                successCount++;
+                            } else {
+                                errorCount++;
+                            }
+                            
+                            return result;
+                        } catch (error) {
+                            if (!IS_PRODUCTION) {
+                                console.error(`Error processing ${file.path}:`, error);
+                            }
+                            errorCount++;
+                            
+                            return {
+                                originalName: file.path,
+                                newName: sanitizeFilename(file.path),
+                                altText: { en: `Error: ${error.message.substring(0, 100)}` }, // Limit error message length
+                                dimensions: 'N/A',
+                                fileSize: 'N/A',
+                                status: 'Error',
+                                error: error.message.substring(0, 200), // Limit for display
+                                preview: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTAiIGhlaWdodD0iNTAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjUwIiBoZWlnaHQ9IjUwIiBmaWxsPSIjZmZmIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxNCIgZmlsbD0iI2UzM2UzZSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZG9taW5hbnQtYmFzZWxpbmU9Im1pZGRsZSI+4p2MPC90ZXh0Pjwvc3ZnPg==',
+                                timestamp: new Date().toISOString()
+                            };
+                        } finally {
+                            // Clear image data from memory
+                            if (file.entry) file.entry = null;
+                        }
+                    });
+                    
+                    // Wait for batch to complete
+                    const batchResults = await Promise.all(batchPromises);
+                    processedImages.push(...batchResults);
+                    
+                    // Save progress
+                    saveSession();
+                    
+                    // Rate limiting delay between batches
+                    if (i + CONCURRENT_LIMIT < imageFiles.length && !abortController.signal.aborted) {
+                        await new Promise(resolve => setTimeout(resolve, RATE_LIMIT_DELAY));
                     }
                 }
                 
-                // Show results
+                // Clean up
+                abortController = null;
+                
+                // Show results with summary
                 updateProgress(imageFiles.length, imageFiles.length, 'Complete!');
+                const summary = `Processed ${imageFiles.length} images: ${successCount} successful, ${errorCount} errors`;
+                document.getElementById('statusMessage').textContent = summary;
+                
                 setTimeout(() => {
                     document.getElementById('progressContainer').style.display = 'none';
                     displayResults();
-                }, 1000);
+                    
+                    // Auto-advance to results step
+                    if (currentStep === 4) {
+                        currentStep = 5;
+                        updateWizardUI();
+                    }
+                    
+                    if (errorCount > 0) {
+                        alert(`${summary}\n\nPlease review the errors in the results table.`);
+                    }
+                    
+                    // Clear file input to allow re-selection
+                    document.getElementById('zipInput').value = '';
+                }, 1500);
                 
             } catch (error) {
                 logError('Error processing ZIP file:', error);
@@ -1518,26 +1562,6 @@
             }
         }
         
-        function updateGlobalStatus(message, type = 'info') {
-            const statusEl = document.getElementById('globalStatus');
-            const colors = {
-                'info': '#3498db',
-                'success': '#27ae60',
-                'error': '#e74c3c',
-                'warning': '#f39c12'
-            };
-            
-            statusEl.style.color = colors[type] || colors.info;
-            statusEl.textContent = message;
-            
-            if (message) {
-                setTimeout(() => {
-                    statusEl.textContent = '';
-                }, 5000);
-            }
-        }
-        
-        // Update progress function to include global status
         function updateProgress(current, total, filename) {
             const percentage = Math.round((current / total) * 100);
             document.getElementById('progressFill').style.width = percentage + '%';
@@ -1589,7 +1613,7 @@
             try {
                 claudeResponse = await callClaudeAPI(base64Data, mimeType, filename, languages);
             } catch (apiError) {
-                                    logError('API Error for ' + filename + ':', apiError);
+                logError('API Error for ' + filename + ':', apiError);
                 claudeResponse = {
                     filename: filename.toLowerCase().replace(/[^a-z0-9.]+/g, '-'),
                     altText: { en: apiError.message || 'Error processing image' }
@@ -1619,7 +1643,13 @@
         function createThumbnail(base64Data, mimeType, maxWidth, maxHeight) {
             return new Promise((resolve, reject) => {
                 const img = new Image();
+                const timeout = setTimeout(() => {
+                    img.src = ''; // Clear source
+                    reject(new Error('Thumbnail creation timeout'));
+                }, 5000); // 5 second timeout
+                
                 img.onload = function() {
+                    clearTimeout(timeout);
                     try {
                         const canvas = document.createElement('canvas');
                         const ctx = canvas.getContext('2d');
@@ -1651,7 +1681,13 @@
                         img.src = ''; // Clear the image source to free memory
                     }
                 };
-                img.onerror = reject;
+                
+                img.onerror = function() {
+                    clearTimeout(timeout);
+                    img.src = ''; // Clear source
+                    reject(new Error('Failed to load image'));
+                };
+                
                 img.src = `data:${mimeType};base64,${base64Data}`;
             });
         }
@@ -1814,7 +1850,7 @@ Respond in this exact JSON format:
                 }
                 
             } catch (error) {
-                console.error('Claude API error:', error);
+                logError('Claude API error:', error);
                 
                 if (error.name === 'AbortError') {
                     throw new Error('Request timeout - please try again');
@@ -1948,7 +1984,13 @@ Respond in this exact JSON format:
             
             // Update cost estimate
             const totalCost = calculateCost(processedImages.length);
-            document.getElementById('costEstimate').textContent = `Estimated API cost: ${totalCost.toFixed(4)} USD`;
+            document.getElementById('costEstimate').textContent = `Estimated API cost: $${totalCost.toFixed(4)} USD`;
+            
+            // Auto-advance to results step if not already there
+            if (currentStep < 5) {
+                currentStep = 5;
+                updateWizardUI();
+            }
         }
         
         function calculateCost(imageCount) {
@@ -1988,85 +2030,115 @@ Respond in this exact JSON format:
             }
         }
         
-        function downloadCSV() {
-            // Validate data before export
-            const issues = validateExportData();
-            if (issues.length > 0) {
-                const proceed = confirm(`Found ${issues.length} potential issues:\n\n${issues.slice(0, 5).join('\n')}${issues.length > 5 ? '\n...' : ''}\n\nContinue with export anyway?`);
-                if (!proceed) return;
-            }
-            
-            const languages = getSelectedLanguages();
-            let csv = 'Original Filename,New SEO Filename,Alt Text (English)';
-            
-            // Add language columns
-            languages.forEach(lang => {
-                if (lang !== 'en') {
-                    csv += `,Alt Text (${getLanguageName(lang)})`;
-                }
-            });
-            csv += ',Dimensions,File Size,Processing Date,Status\n';
-            
-            // Helper function to escape CSV values
-            function escapeCSV(value) {
-                if (value === null || value === undefined) return '""';
-                value = String(value);
-                
-                // Remove any formula injection attempts
-                if (value.startsWith('=') || value.startsWith('+') || value.startsWith('-') || value.startsWith('@')) {
-                    value = "'" + value;
-                }
-                
-                // Escape quotes and wrap in quotes if necessary
-                if (value.includes('"') || value.includes(',') || value.includes('\n')) {
-                    return '"' + value.replace(/"/g, '""') + '"';
-                }
-                return value;
-            }
-            
-            // Ensure unique filenames in export
-            const exportFilenames = new Set();
-            
-            // Add data rows
-            processedImages.forEach(img => {
-                // Generate unique filename if needed
-                const uniqueFilename = generateUniqueFilename(img.newName, exportFilenames);
-                
-                let row = [
-                    escapeCSV(img.originalName),
-                    escapeCSV(uniqueFilename),
-                    escapeCSV(img.altText.en)
-                ];
-                
-                languages.forEach(lang => {
-                    if (lang !== 'en') {
-                        row.push(escapeCSV(img.altText[lang] || ''));
+        // Helper functions
+        function sanitizeFilename(filename) {
+            const ext = filename.split('.').pop().toLowerCase();
+            const base = filename.slice(0, -(ext.length + 1));
+            const sanitized = base.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+            return (sanitized || 'image') + '-' + Date.now() + '.' + ext;
+        }
+        
+        function cancelProcessing() {
+            if (abortController) {
+                abortController.abort();
+                document.getElementById('statusMessage').textContent = 'Processing cancelled by user';
+                setTimeout(() => {
+                    document.getElementById('progressContainer').style.display = 'none';
+                    if (processedImages.length > 0) {
+                        displayResults();
                     }
-                });
+                }, 1000);
+            }
+        }
+        
+        // Validate file type more thoroughly
+        function validateImageFile(data, mimeType) {
+            // Check magic numbers for common image formats
+            const magicNumbers = {
+                'image/jpeg': ['FFD8FF'],
+                'image/png': ['89504E47'],
+                'image/gif': ['47494638'],
+                'image/webp': ['52494646']
+            };
+            
+            if (magicNumbers[mimeType]) {
+                const header = atob(data.slice(0, 12)).slice(0, 4);
+                const hex = Array.from(header).map(b => b.charCodeAt(0).toString(16).toUpperCase().padStart(2, '0')).join('');
                 
-                row.push(
-                    escapeCSV(img.dimensions),
-                    escapeCSV(img.fileSize),
-                    escapeCSV(new Date(img.timestamp).toLocaleString()),
-                    escapeCSV(img.status)
-                );
+                return magicNumbers[mimeType].some(magic => hex.startsWith(magic));
+            }
+            
+            return true; // Allow other formats
+        }
+        
+        // Generate unique filename to avoid collisions
+        function generateUniqueFilename(baseFilename, existingFilenames) {
+            let filename = baseFilename;
+            let counter = 1;
+            const ext = filename.split('.').pop();
+            const base = filename.slice(0, -(ext.length + 1));
+            
+            while (existingFilenames.has(filename.toLowerCase())) {
+                filename = `${base}-${counter}.${ext}`;
+                counter++;
+            }
+            
+            existingFilenames.add(filename.toLowerCase());
+            return filename;
+        }
+        
+        // Export validation
+        function validateExportData() {
+            const issues = [];
+            const seenFilenames = new Set();
+            
+            processedImages.forEach((img, index) => {
+                // Check for empty alt text
+                if (!img.altText.en || img.altText.en.trim() === '') {
+                    issues.push(`Row ${index + 1}: Missing English alt text`);
+                }
                 
-                csv += row.join(',') + '\n';
+                // Check for duplicate filenames
+                if (seenFilenames.has(img.newName.toLowerCase())) {
+                    issues.push(`Row ${index + 1}: Duplicate filename "${img.newName}"`);
+                }
+                seenFilenames.add(img.newName.toLowerCase());
+                
+                // Check for invalid filenames
+                if (!/^[a-z0-9.-]+$/.test(img.newName)) {
+                    issues.push(`Row ${index + 1}: Invalid filename format "${img.newName}"`);
+                }
             });
             
-            // Download with BOM for Excel compatibility
-            const BOM = '\uFEFF';
-            const blob = new Blob([BOM + csv], { type: 'text/csv;charset=utf-8' });
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
-            a.download = `image-seo-data-${timestamp}.csv`;
-            a.click();
-            window.URL.revokeObjectURL(url);
+            return issues;
+        }
+        
+        // Add window unload warning
+        window.addEventListener('beforeunload', function(e) {
+            if (isProcessing || (processedImages.length > 0 && !localStorage.getItem('imageProcessingSession'))) {
+                e.preventDefault();
+                e.returnValue = 'You have unsaved changes. Are you sure you want to leave?';
+                return e.returnValue;
+            }
+        });
+        
+        function updateGlobalStatus(message, type = 'info') {
+            const statusEl = document.getElementById('globalStatus');
+            const colors = {
+                'info': '#3498db',
+                'success': '#27ae60',
+                'error': '#e74c3c',
+                'warning': '#f39c12'
+            };
             
-            // Clear session after successful export
-            clearSession();
+            statusEl.style.color = colors[type] || colors.info;
+            statusEl.textContent = message;
+            
+            if (message) {
+                setTimeout(() => {
+                    statusEl.textContent = '';
+                }, 5000);
+            }
         }
         
         function downloadExcel() {
@@ -2184,6 +2256,148 @@ Respond in this exact JSON format:
             
             // Clear session after successful export
             clearSession();
+        }
+        
+        function downloadCSV() {
+            // Validate data before export
+            const issues = validateExportData();
+            if (issues.length > 0) {
+                const proceed = confirm(`Found ${issues.length} potential issues:\n\n${issues.slice(0, 5).join('\n')}${issues.length > 5 ? '\n...' : ''}\n\nContinue with export anyway?`);
+                if (!proceed) return;
+            }
+            
+            const languages = getSelectedLanguages();
+            let csv = 'Original Filename,New SEO Filename,Alt Text (English)';
+            
+            // Add language columns
+            languages.forEach(lang => {
+                if (lang !== 'en') {
+                    csv += `,Alt Text (${getLanguageName(lang)})`;
+                }
+            });
+            csv += ',Dimensions,File Size,Processing Date,Status\n';
+            
+            // Helper function to escape CSV values
+            function escapeCSV(value) {
+                if (value === null || value === undefined) return '""';
+                value = String(value);
+                
+                // Remove any formula injection attempts
+                if (value.startsWith('=') || value.startsWith('+') || value.startsWith('-') || value.startsWith('@')) {
+                    value = "'" + value;
+                }
+                
+                // Escape quotes and wrap in quotes if necessary
+                if (value.includes('"') || value.includes(',') || value.includes('\n')) {
+                    return '"' + value.replace(/"/g, '""') + '"';
+                }
+                return value;
+            }
+            
+            // Ensure unique filenames in export
+            const exportFilenames = new Set();
+            
+            // Add data rows
+            processedImages.forEach(img => {
+                // Generate unique filename if needed
+                const uniqueFilename = generateUniqueFilename(img.newName, exportFilenames);
+                
+                let row = [
+                    escapeCSV(img.originalName),
+                    escapeCSV(uniqueFilename),
+                    escapeCSV(img.altText.en)
+                ];
+                
+                languages.forEach(lang => {
+                    if (lang !== 'en') {
+                        row.push(escapeCSV(img.altText[lang] || ''));
+                    }
+                });
+                
+                row.push(
+                    escapeCSV(img.dimensions),
+                    escapeCSV(img.fileSize),
+                    escapeCSV(new Date(img.timestamp).toLocaleString()),
+                    escapeCSV(img.status)
+                );
+                
+                csv += row.join(',') + '\n';
+            });
+            
+            // Download with BOM for Excel compatibility
+            const BOM = '\uFEFF';
+            const blob = new Blob([BOM + csv], { type: 'text/csv;charset=utf-8' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+            a.download = `image-seo-data-${timestamp}.csv`;
+            a.click();
+            window.URL.revokeObjectURL(url);
+            
+            // Clear session after successful export
+            clearSession();
+        }
+        
+        // Initialize when DOM is ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initialize);
+        } else {
+            initialize();
+        }
+        
+        function initialize() {
+            if (!checkBrowserCompatibility()) {
+                document.body.innerHTML = '<div style="padding: 2rem; text-align: center;"><h1>Browser Not Supported</h1><p>Please use a modern browser to access this tool.</p></div>';
+                return;
+            }
+            
+            try {
+                const savedKey = localStorage.getItem('claudeApiKey');
+                if (savedKey) {
+                    // Decode the obfuscated key
+                    const decoded = atob(savedKey);
+                    document.getElementById('apiKey').value = decoded;
+                    apiKey = decoded;
+                    document.getElementById('apiKeyStatus').innerHTML = '<span class="success">✓ API key loaded from storage</span>';
+                }
+                
+                // Load saved session if exists
+                const savedSession = localStorage.getItem('imageProcessingSession');
+                if (savedSession) {
+                    const session = JSON.parse(savedSession);
+                    if (session.timestamp && (Date.now() - session.timestamp < SESSION_DURATION_HOURS * 60 * 60 * 1000)) {
+                        if (confirm('Found a previous session. Would you like to restore it?')) {
+                            processedImages = session.images || [];
+                            if (processedImages.length > 0) {
+                                // Go directly to results
+                                currentStep = 5;
+                                displayResults();
+                            }
+                        } else {
+                            localStorage.removeItem('imageProcessingSession');
+                        }
+                    } else {
+                        // Session expired
+                        localStorage.removeItem('imageProcessingSession');
+                    }
+                }
+            } catch (error) {
+                logError('Error loading saved data:', error);
+                localStorage.removeItem('claudeApiKey'); // Clear corrupted data
+                localStorage.removeItem('imageProcessingSession');
+            }
+            
+            // Initialize wizard
+            initializeWizard();
+            
+            // Set up auto-save
+            setInterval(saveSession, AUTO_SAVE_INTERVAL);
+            
+            // Log version in development
+            if (!IS_PRODUCTION) {
+                console.log(`Image Alt Text Generator v${APP_VERSION}`);
+            }
         }
     </script>
 </body>

@@ -1,0 +1,2190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Generate SEO-optimized filenames and WCAG-compliant alt text for images using Claude AI. Process single images or batch upload up to 100 images.">
+    <meta name="keywords" content="alt text generator, SEO filename, image accessibility, WCAG compliance, Claude AI, batch image processing">
+    <meta name="author" content="Image SEO Tool">
+    <meta name="robots" content="noindex, nofollow">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>Image Alt Text & SEO Filename Generator - Powered by Claude AI</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>🖼️</text></svg>">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" integrity="sha512-XMVd28F1oH/O71fzwBnV7HucLxVwtxf26XV8P4wPk26EDxuGZ91N8bsOttmnomcCD3CS5ZMRL50H0GgOHvegtg==" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.20.1/xlsx.full.min.js" integrity="sha512-qa2R0aXkJJaKg0Ui7LBLd/54XbpI4GsDvRd8IrnyPWKRqQYr4qPKF37Fb3OJ+w7F9jwYn6i1oX8u1XR8mDmMAw==" crossorigin="anonymous"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f5f5f5;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        header {
+            background-color: #2c3e50;
+            color: white;
+            padding: 2rem 0;
+            margin-bottom: 2rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        header h1 {
+            text-align: center;
+            font-size: 2rem;
+        }
+        
+        .subtitle {
+            text-align: center;
+            margin-top: 0.5rem;
+            opacity: 0.9;
+        }
+        
+        /* Wizard Styles */
+        .wizard-container {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .wizard-header {
+            background-color: #ecf0f1;
+            padding: 1.5rem;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        .wizard-steps {
+            display: flex;
+            justify-content: space-between;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        .wizard-step {
+            flex: 1;
+            text-align: center;
+            position: relative;
+            padding: 0 1rem;
+        }
+        
+        .wizard-step:not(:last-child)::after {
+            content: '';
+            position: absolute;
+            top: 15px;
+            right: -50%;
+            width: 100%;
+            height: 2px;
+            background-color: #ddd;
+            z-index: 1;
+        }
+        
+        .wizard-step.completed:not(:last-child)::after {
+            background-color: #27ae60;
+        }
+        
+        .step-number {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background-color: #ddd;
+            color: white;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            position: relative;
+            z-index: 2;
+            transition: all 0.3s;
+        }
+        
+        .wizard-step.active .step-number {
+            background-color: #3498db;
+            transform: scale(1.1);
+        }
+        
+        .wizard-step.completed .step-number {
+            background-color: #27ae60;
+        }
+        
+        .step-title {
+            margin-top: 0.5rem;
+            font-size: 0.9rem;
+            color: #666;
+        }
+        
+        .wizard-step.active .step-title {
+            color: #2c3e50;
+            font-weight: 600;
+        }
+        
+        .wizard-body {
+            padding: 2rem;
+            min-height: 400px;
+        }
+        
+        .wizard-footer {
+            background-color: #f8f9fa;
+            padding: 1.5rem 2rem;
+            border-top: 1px solid #ddd;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .wizard-section {
+            display: none;
+        }
+        
+        .wizard-section.active {
+            display: block;
+            animation: fadeIn 0.3s ease-in;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        /* Help Text Styles */
+        .help-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background-color: #3498db;
+            color: white;
+            font-size: 12px;
+            font-weight: bold;
+            cursor: help;
+            margin-left: 0.5rem;
+            position: relative;
+        }
+        
+        .help-tooltip {
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            margin-bottom: 10px;
+            padding: 0.75rem;
+            background-color: #2c3e50;
+            color: white;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            line-height: 1.4;
+            width: 250px;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s;
+            z-index: 1000;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+        
+        .help-tooltip::after {
+            content: '';
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            margin-left: -5px;
+            border-width: 5px;
+            border-style: solid;
+            border-color: #2c3e50 transparent transparent transparent;
+        }
+        
+        .help-icon:hover .help-tooltip {
+            opacity: 1;
+            visibility: visible;
+        }
+        
+        .field-group {
+            position: relative;
+            margin-bottom: 1.5rem;
+        }
+        
+        .field-label {
+            display: flex;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+        
+        /* Existing styles continue... */
+        .card {
+            background: white;
+            border-radius: 8px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .card h2 {
+            margin-bottom: 1rem;
+            color: #2c3e50;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 0.5rem;
+        }
+        
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: #555;
+        }
+        
+        .success {
+            color: #27ae60;
+            margin-top: 0.5rem;
+            font-size: 0.9rem;
+        }
+        
+        .error {
+            color: #e74c3c;
+            margin-top: 0.5rem;
+            font-size: 0.9rem;
+        }
+        
+        input[type="text"],
+        input[type="password"],
+        select,
+        textarea {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 1rem;
+            transition: border-color 0.3s, box-shadow 0.3s;
+            font-family: inherit;
+        }
+        
+        input[type="text"]:focus,
+        input[type="password"]:focus,
+        select:focus,
+        textarea:focus {
+            outline: none;
+            border-color: #3498db;
+            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+        }
+        
+        textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+        
+        .api-key-group {
+            display: flex;
+            gap: 1rem;
+            align-items: flex-end;
+        }
+        
+        .api-key-group input {
+            flex: 1;
+        }
+        
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+        
+        button:hover:not(:disabled) {
+            background-color: #2980b9;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        
+        button:disabled {
+            background-color: #95a5a6;
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+        
+        button:active:not(:disabled) {
+            transform: translateY(0);
+            box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+        }
+        
+        .file-upload {
+            border: 2px dashed #3498db;
+            border-radius: 8px;
+            padding: 2rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            position: relative;
+            background-color: #f8f9fa;
+        }
+        
+        .file-upload:hover {
+            background-color: #e3f2fd;
+            border-color: #2196f3;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        
+        .file-upload.dragover {
+            background-color: #e3f2fd;
+            border-color: #2196f3;
+            border-width: 3px;
+        }
+        
+        #fileInput {
+            display: none;
+        }
+        
+        .progress-container {
+            margin-top: 2rem;
+            display: none;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 30px;
+            background-color: #ecf0f1;
+            border-radius: 15px;
+            overflow: hidden;
+            margin-bottom: 1rem;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background-color: #3498db;
+            transition: width 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+        }
+        
+        .status-message {
+            text-align: center;
+            margin-bottom: 1rem;
+            font-weight: 500;
+        }
+        
+        .error {
+            color: #e74c3c;
+            margin-top: 0.5rem;
+        }
+        
+        .success {
+            color: #27ae60;
+            margin-top: 0.5rem;
+        }
+        
+        .instructions {
+            background-color: #ecf0f1;
+            padding: 1rem;
+            border-radius: 4px;
+            margin-top: 1rem;
+            border: 1px solid #d5dbdb;
+        }
+        
+        .instructions h3 {
+            margin-bottom: 0.5rem;
+            color: #2c3e50;
+        }
+        
+        .instructions ol {
+            margin-left: 1.5rem;
+        }
+        
+        .instructions li {
+            margin-bottom: 0.5rem;
+        }
+        
+        .instructions a {
+            color: #3498db;
+            text-decoration: none;
+        }
+        
+        .instructions a:hover {
+            text-decoration: underline;
+        }
+        
+        .attestation {
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+            padding: 1rem;
+            border-radius: 4px;
+            margin-bottom: 1rem;
+        }
+        
+        .attestation h3 {
+            color: #856404;
+            margin-bottom: 0.5rem;
+        }
+        
+        .attestation ul {
+            margin-left: 1.5rem;
+            margin-bottom: 1rem;
+        }
+        
+        .attestation li {
+            margin-bottom: 0.5rem;
+        }
+        
+        .checkbox-group {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+        
+        .checkbox-group input[type="checkbox"] {
+            margin-top: 0.25rem;
+            cursor: pointer;
+        }
+        
+        .checkbox-group label {
+            cursor: pointer;
+            line-height: 1.5;
+        }
+        
+        .results-table {
+            margin-top: 2rem;
+            overflow-x: auto;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+        }
+        
+        th, td {
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        th {
+            background-color: #2c3e50;
+            color: white;
+            font-weight: 600;
+        }
+        
+        tr:hover {
+            background-color: #f5f5f5;
+        }
+        
+        .preview-image {
+            width: 50px;
+            height: 50px;
+            object-fit: cover;
+            border-radius: 4px;
+        }
+        
+        .editable {
+            background-color: #f0f8ff;
+            border: 1px solid #3498db;
+            padding: 0.25rem;
+            border-radius: 2px;
+            min-width: 200px;
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+            
+            .card {
+                padding: 1rem;
+            }
+            
+            .api-key-group {
+                flex-direction: column;
+            }
+            
+            .instructions ol {
+                margin-left: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>Image Alt Text & SEO Filename Generator</h1>
+            <p class="subtitle">Powered by Claude AI for WCAG 2.1 Compliant Accessibility</p>
+            <div id="globalStatus" style="text-align: center; margin-top: 0.5rem; font-size: 0.9rem; opacity: 0.8;"></div>
+        </div>
+    </header>
+    
+    <div class="container">
+        <!-- Wizard Container -->
+        <div class="wizard-container">
+            <!-- Wizard Header with Steps -->
+            <div class="wizard-header">
+                <div class="wizard-steps">
+                    <div class="wizard-step active" data-step="1">
+                        <div class="step-number">1</div>
+                        <div class="step-title">API Setup</div>
+                    </div>
+                    <div class="wizard-step" data-step="2">
+                        <div class="step-number">2</div>
+                        <div class="step-title">Languages</div>
+                    </div>
+                    <div class="wizard-step" data-step="3">
+                        <div class="step-number">3</div>
+                        <div class="step-title">Legal Agreement</div>
+                    </div>
+                    <div class="wizard-step" data-step="4">
+                        <div class="step-number">4</div>
+                        <div class="step-title">Upload Images</div>
+                    </div>
+                    <div class="wizard-step" data-step="5">
+                        <div class="step-number">5</div>
+                        <div class="step-title">Results</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Wizard Body -->
+            <div class="wizard-body">
+                <!-- Step 1: API Key Setup -->
+                <div class="wizard-section active" id="step1">
+                    <h2>Step 1: Claude API Key Setup</h2>
+                    <p style="color: #666; margin-bottom: 1.5rem;">To use this tool, you'll need a Claude API key. This key allows the tool to communicate with Claude AI to analyze your images.</p>
+                    
+                    <div class="field-group">
+                        <div class="field-label">
+                            <label for="apiKey">Claude API Key:</label>
+                            <span class="help-icon">?
+                                <span class="help-tooltip">Your API key starts with 'sk-ant-api' and is used to authenticate with Claude. It's stored securely in your browser and never shared.</span>
+                            </span>
+                        </div>
+                        <div class="api-key-group">
+                            <input type="password" id="apiKey" placeholder="sk-ant-api...">
+                            <button onclick="toggleApiKeyVisibility()">Show/Hide</button>
+                            <button onclick="saveApiKey()">Save Key</button>
+                        </div>
+                        <div id="apiKeyStatus"></div>
+                    </div>
+                    
+                    <div class="instructions">
+                        <h3>How to get your Claude API Key:</h3>
+                        <ol>
+                            <li>Go to <a href="https://console.anthropic.com/" target="_blank">console.anthropic.com</a></li>
+                            <li>Sign in or create an account</li>
+                            <li>Navigate to "API Keys" in the settings</li>
+                            <li>Click "Create Key" and copy the generated key</li>
+                            <li>Paste it above and click "Save Key" to store it securely in your browser</li>
+                        </ol>
+                        <p style="margin-top: 1rem;"><strong>Note:</strong> Your API key is stored locally in your browser and never sent to any server except Anthropic's.</p>
+                    </div>
+                </div>
+                
+                <!-- Step 2: Language Selection -->
+                <div class="wizard-section" id="step2">
+                    <h2>Step 2: Language Options</h2>
+                    <p style="color: #666; margin-bottom: 1.5rem;">Choose the languages for your alt text. English is always included, but you can add translations for international SEO.</p>
+                    
+                    <div class="field-group">
+                        <div class="field-label">
+                            <label for="language">Primary Language:</label>
+                            <span class="help-icon">?
+                                <span class="help-tooltip">The primary language for your alt text. Additional languages can be selected below for multi-language websites.</span>
+                            </span>
+                        </div>
+                        <select id="language">
+                            <option value="en">English</option>
+                        </select>
+                    </div>
+                    
+                    <div class="field-group">
+                        <label style="display: flex; align-items: center;">
+                            <input type="checkbox" id="multiLanguage" onchange="toggleMultiLanguage()" style="margin-right: 0.5rem;">
+                            Generate translations for other languages
+                            <span class="help-icon" style="margin-left: 0.5rem;">?
+                                <span class="help-tooltip">Enable this to generate alt text in multiple languages. Great for international websites or multi-language SEO strategies.</span>
+                            </span>
+                        </label>
+                        <div id="additionalLanguages" style="display: none; margin-top: 1rem;">
+                            <p style="margin-bottom: 0.5rem; color: #666;">Select additional languages:</p>
+                            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 0.5rem;">
+                                <label><input type="checkbox" value="es"> Spanish</label>
+                                <label><input type="checkbox" value="fr"> French</label>
+                                <label><input type="checkbox" value="de"> German</label>
+                                <label><input type="checkbox" value="it"> Italian</label>
+                                <label><input type="checkbox" value="pt"> Portuguese</label>
+                                <label><input type="checkbox" value="nl"> Dutch</label>
+                                <label><input type="checkbox" value="ja"> Japanese</label>
+                                <label><input type="checkbox" value="ko"> Korean</label>
+                                <label><input type="checkbox" value="zh"> Chinese (Simplified)</label>
+                                <label><input type="checkbox" value="ar"> Arabic</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Step 3: Legal Attestation -->
+                <div class="wizard-section" id="step3">
+                    <h2>Step 3: Legal Agreement</h2>
+                    <p style="color: #666; margin-bottom: 1.5rem;">Please review and accept the terms of use before proceeding.</p>
+                    
+                    <div class="attestation">
+                        <h3>Important Legal Notice</h3>
+                        <p>By using this tool, you acknowledge and agree to the following:</p>
+                        <ul>
+                            <li>All generated alt text and filenames are AI-generated suggestions that MUST be reviewed by a human before publication</li>
+                            <li>You are solely responsible for ensuring the accuracy, appropriateness, and compliance of all content</li>
+                            <li>The tool aims for WCAG 2.1 compliance but does not guarantee full accessibility compliance</li>
+                            <li>You must verify that descriptions do not contain inappropriate references to race, ethnicity, or other sensitive attributes</li>
+                            <li>This tool is provided "as is" without warranties of any kind</li>
+                        </ul>
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="attestation" onchange="validateStep3()">
+                            <label for="attestation">
+                                I understand and agree that I will review all generated content before publishing and take full responsibility for its accuracy and appropriateness.
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Step 4: Upload Images -->
+                <div class="wizard-section" id="step4">
+                    <h2>Step 4: Upload Images</h2>
+                    <p style="color: #666; margin-bottom: 1.5rem;">Choose how you want to process your images. You can upload a single image for quick results or a ZIP file for batch processing.</p>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                        <div class="file-upload" onclick="document.getElementById('zipInput').click()" 
+                             ondrop="handleDrop(event)" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)"
+                             tabindex="0" role="button" aria-label="Upload ZIP file for batch processing"
+                             onkeypress="if(event.key==='Enter') document.getElementById('zipInput').click()">
+                            <p style="font-size: 3rem; margin-bottom: 1rem;">📁</p>
+                            <p><strong>Batch Processing</strong></p>
+                            <p>Upload ZIP file (max 100MB)</p>
+                            <p style="color: #666; font-size: 0.9rem; margin-top: 0.5rem;">Process up to 100 images at once</p>
+                            <span class="help-icon" style="position: absolute; top: 10px; right: 10px;">?
+                                <span class="help-tooltip">Create a ZIP file containing all your images. The tool will process them in batches of 3 for optimal performance.</span>
+                            </span>
+                        </div>
+                        <div class="file-upload" onclick="document.getElementById('singleInput').click()"
+                             tabindex="0" role="button" aria-label="Upload single image for quick processing"
+                             onkeypress="if(event.key==='Enter') document.getElementById('singleInput').click()">
+                            <p style="font-size: 3rem; margin-bottom: 1rem;">🖼️</p>
+                            <p><strong>Single Image</strong></p>
+                            <p>Quick process one image</p>
+                            <p style="color: #666; font-size: 0.9rem; margin-top: 0.5rem;">Get instant results</p>
+                            <span class="help-icon" style="position: absolute; top: 10px; right: 10px;">?
+                                <span class="help-tooltip">Perfect for testing or processing individual images. Maximum file size is 5MB per image.</span>
+                            </span>
+                        </div>
+                    </div>
+                    <p style="text-align: center; color: #666;">Supports: JPG, PNG, WebP, GIF, SVG, HEIC, HEIF</p>
+                    <input type="file" id="zipInput" accept=".zip" onchange="handleFileSelect(event)" style="display: none;">
+                    <input type="file" id="singleInput" accept="image/*,.heic,.heif" onchange="handleSingleImage(event)" style="display: none;">
+                    
+                    <div class="progress-container" id="progressContainer">
+                        <div class="status-message" id="statusMessage">Processing images...</div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="progressFill">0%</div>
+                        </div>
+                        <div id="currentImage" style="text-align: center; color: #666;"></div>
+                        <div style="text-align: center; margin-top: 1rem;">
+                            <button onclick="cancelProcessing()" style="background-color: #e74c3c;">Cancel Processing</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Step 5: Results -->
+                <div class="wizard-section" id="step5">
+                    <h2>Step 5: Review Results</h2>
+                    
+                    <!-- Single Image Result -->
+                    <div id="singleResultCard" style="display: none; margin-bottom: 2rem;">
+                        <h3>Quick Result</h3>
+                        <div style="display: grid; grid-template-columns: auto 1fr; gap: 2rem; align-items: start;">
+                            <img id="singlePreview" style="max-width: 300px; max-height: 300px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                            <div>
+                                <div class="field-group">
+                                    <div class="field-label">
+                                        <label>Original Filename:</label>
+                                        <span class="help-icon">?
+                                            <span class="help-tooltip">The original name of your uploaded image file.</span>
+                                        </span>
+                                    </div>
+                                    <p id="singleOriginal" style="font-family: monospace; background: #f5f5f5; padding: 0.5rem; border-radius: 4px;"></p>
+                                </div>
+                                <div class="field-group">
+                                    <div class="field-label">
+                                        <label>SEO Filename:</label>
+                                        <span class="help-icon">?
+                                            <span class="help-tooltip">SEO-optimized filename using lowercase letters, hyphens, and descriptive keywords.</span>
+                                        </span>
+                                    </div>
+                                    <div style="display: flex; gap: 0.5rem;">
+                                        <input type="text" id="singleNewName" style="flex: 1;">
+                                        <button onclick="copyToClipboard('singleNewName')" title="Copy to clipboard">📋</button>
+                                    </div>
+                                </div>
+                                <div class="field-group">
+                                    <div class="field-label">
+                                        <label>Alt Text:</label>
+                                        <span class="help-icon">?
+                                            <span class="help-tooltip">Descriptive text for accessibility. Should be under 155 characters for regular images, longer for charts/infographics.</span>
+                                        </span>
+                                    </div>
+                                    <div style="display: flex; gap: 0.5rem;">
+                                        <textarea id="singleAltText" rows="3" style="flex: 1; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; resize: vertical;"></textarea>
+                                        <button onclick="copyToClipboard('singleAltText')" title="Copy to clipboard">📋</button>
+                                    </div>
+                                </div>
+                                <div id="singleTranslations"></div>
+                                <div style="display: flex; gap: 1rem; margin-top: 1rem;">
+                                    <button onclick="document.getElementById('singleInput').click()">Process Another Image</button>
+                                    <button onclick="addToExportList()" style="background-color: #27ae60;">Add to Export List</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Batch Results -->
+                    <div id="resultsCard" style="display: none;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                            <div>
+                                <p>Review and edit the generated content below. Click on any text to edit it.</p>
+                                <p style="color: #666; font-size: 0.9rem;">
+                                    <span class="help-icon" style="position: relative; top: -2px;">?
+                                        <span class="help-tooltip">All blue-highlighted fields are editable. Changes are automatically saved as you type.</span>
+                                    </span>
+                                    Tip: Blue fields are editable - click to modify
+                                </p>
+                            </div>
+                            <div style="display: flex; gap: 1rem;">
+                                <button onclick="downloadExcel()">Download Excel</button>
+                                <button onclick="downloadCSV()" style="background-color: #95a5a6;">Download CSV</button>
+                            </div>
+                        </div>
+                        <div class="results-table">
+                            <table id="resultsTable">
+                                <thead>
+                                    <tr>
+                                        <th>Preview</th>
+                                        <th>Original Filename</th>
+                                        <th>New SEO Filename</th>
+                                        <th>Alt Text (English)</th>
+                                        <th>Dimensions</th>
+                                        <th>File Size</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="resultsBody"></tbody>
+                            </table>
+                        </div>
+                        <div style="margin-top: 1rem; text-align: right; color: #666;">
+                            <p id="costEstimate"></p>
+                        </div>
+                    </div>
+                    
+                    <div id="noResultsMessage" style="text-align: center; padding: 3rem; color: #666;">
+                        <p style="font-size: 1.2rem; margin-bottom: 1rem;">No results yet</p>
+                        <p>Upload and process images to see results here</p>
+                        <button onclick="goToStep(4)" style="margin-top: 1rem;">← Back to Upload</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Wizard Footer -->
+            <div class="wizard-footer">
+                <button id="prevBtn" onclick="previousStep()" style="background-color: #95a5a6;">← Previous</button>
+                <div style="text-align: center; color: #666;">
+                    <span id="stepIndicator">Step 1 of 5</span>
+                    <span style="margin-left: 1rem; font-size: 0.8rem; opacity: 0.7;">v<span id="versionIndicator"></span></span>
+                </div>
+                <button id="nextBtn" onclick="nextStep()">Next →</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Set version indicator
+        document.getElementById('versionIndicator').textContent = APP_VERSION;
+        // Application Configuration
+        const APP_VERSION = '2.0.0';
+        const IS_PRODUCTION = true;
+        const MAX_IMAGES = 100;
+        const MAX_FILE_SIZE_MB = 100;
+        const MAX_IMAGE_SIZE_MB = 5;
+        const CONCURRENT_LIMIT = 3;
+        const RATE_LIMIT_DELAY = 1000;
+        const SESSION_DURATION_HOURS = 24;
+        const AUTO_SAVE_INTERVAL = 30000;
+        
+        // Global variables
+        let processedImages = [];
+        let apiKey = '';
+        let processingQueue = [];
+        let isProcessing = false;
+        let abortController = null;
+        let currentStep = 1;
+        const totalSteps = 5;
+        
+        // Error tracking for future analytics
+        const errorLog = [];
+        
+        // Utility function for conditional logging
+        function logError(message, error) {
+            const errorData = {
+                message: message,
+                error: error ? error.toString() : 'Unknown error',
+                timestamp: new Date().toISOString(),
+                version: APP_VERSION,
+                userAgent: navigator.userAgent
+            };
+            
+            // Store errors for potential reporting
+            errorLog.push(errorData);
+            if (errorLog.length > 50) {
+                errorLog.shift(); // Keep only last 50 errors
+            }
+            
+            if (!IS_PRODUCTION) {
+                console.error(message, error);
+            }
+        }
+        
+        // Wizard Navigation
+        function initializeWizard() {
+            updateWizardUI();
+            validateCurrentStep();
+            
+            // Add keyboard navigation
+            document.addEventListener('keydown', (e) => {
+                // Skip if user is typing in an input
+                if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+                    return;
+                }
+                
+                if (e.key === 'ArrowRight' && currentStep < totalSteps) {
+                    const nextBtn = document.getElementById('nextBtn');
+                    if (!nextBtn.disabled) nextStep();
+                } else if (e.key === 'ArrowLeft' && currentStep > 1) {
+                    previousStep();
+                } else if (e.key === 'Escape' && isProcessing) {
+                    cancelProcessing();
+                }
+            });
+        }
+        
+        function goToStep(step) {
+            if (step < 1 || step > totalSteps) return;
+            
+            // Don't allow skipping ahead without completing previous steps
+            if (step > currentStep) {
+                for (let i = currentStep; i < step; i++) {
+                    if (!validateStep(i)) {
+                        showStepError(i);
+                        return;
+                    }
+                }
+            }
+            
+            currentStep = step;
+            updateWizardUI();
+            validateCurrentStep();
+        }
+        
+        function nextStep() {
+            if (currentStep >= totalSteps) return;
+            
+            if (validateStep(currentStep)) {
+                currentStep++;
+                updateWizardUI();
+                validateCurrentStep();
+                
+                // Auto-focus first input in new step
+                setTimeout(() => {
+                    const firstInput = document.querySelector(`#step${currentStep} input:not([type="checkbox"]), #step${currentStep} textarea`);
+                    if (firstInput) firstInput.focus();
+                }, 300);
+            }
+        }
+        
+        function previousStep() {
+            if (currentStep <= 1) return;
+            currentStep--;
+            updateWizardUI();
+            validateCurrentStep();
+        }
+        
+        function updateWizardUI() {
+            // Update step indicators
+            document.querySelectorAll('.wizard-step').forEach((step, index) => {
+                const stepNum = index + 1;
+                step.classList.toggle('active', stepNum === currentStep);
+                step.classList.toggle('completed', stepNum < currentStep);
+            });
+            
+            // Update sections
+            document.querySelectorAll('.wizard-section').forEach((section, index) => {
+                section.classList.toggle('active', index + 1 === currentStep);
+            });
+            
+            // Update buttons
+            document.getElementById('prevBtn').style.display = currentStep === 1 ? 'none' : 'block';
+            document.getElementById('nextBtn').textContent = currentStep === totalSteps ? 'Finish' : 'Next →';
+            
+            // Update step indicator
+            document.getElementById('stepIndicator').textContent = `Step ${currentStep} of ${totalSteps}`;
+            
+            // Special handling for results step
+            if (currentStep === 5) {
+                updateResultsView();
+            }
+        }
+        
+        function validateStep(step) {
+            switch(step) {
+                case 1:
+                    // Validate API key
+                    if (!apiKey || !apiKey.startsWith('sk-ant-api') || apiKey.length < 50) {
+                        document.getElementById('apiKeyStatus').innerHTML = '<span class="error">Please enter a valid API key</span>';
+                        return false;
+                    }
+                    return true;
+                    
+                case 2:
+                    // Language selection is always valid (English is default)
+                    return true;
+                    
+                case 3:
+                    // Check attestation
+                    if (!document.getElementById('attestation').checked) {
+                        alert('Please agree to the legal terms before proceeding.');
+                        return false;
+                    }
+                    return true;
+                    
+                case 4:
+                    // Upload step - always allow proceeding to results
+                    return true;
+                    
+                case 5:
+                    // Results step - always valid
+                    return true;
+                    
+                default:
+                    return true;
+            }
+        }
+        
+        function validateCurrentStep() {
+            const isValid = validateStep(currentStep);
+            document.getElementById('nextBtn').disabled = !isValid && currentStep < 4;
+        }
+        
+        function validateStep3() {
+            validateCurrentStep();
+        }
+        
+        function showStepError(step) {
+            const messages = {
+                1: 'Please complete API key setup',
+                2: 'Please select languages',
+                3: 'Please accept the legal agreement',
+                4: 'Please upload images'
+            };
+            alert(messages[step] || 'Please complete this step before proceeding');
+        }
+        
+        function updateResultsView() {
+            const hasResults = processedImages.length > 0 || 
+                            document.getElementById('singleResultCard').style.display !== 'none' ||
+                            document.getElementById('resultsCard').style.display !== 'none';
+            
+            document.getElementById('noResultsMessage').style.display = hasResults ? 'none' : 'block';
+            
+            // Hide next button on results page
+            document.getElementById('nextBtn').style.display = 'none';
+        }
+        
+        // Check browser compatibility
+        function checkBrowserCompatibility() {
+            const required = ['fetch', 'Promise', 'FormData', 'FileReader'];
+            const missing = required.filter(feature => !(feature in window));
+            
+            if (missing.length > 0) {
+                alert('Your browser is missing required features: ' + missing.join(', ') + '\nPlease use a modern browser.');
+                return false;
+            }
+            
+            // Check for private browsing mode (localStorage might fail)
+            try {
+                localStorage.setItem('test', 'test');
+                localStorage.removeItem('test');
+            } catch (e) {
+                alert('This app requires localStorage. Please disable private browsing mode.');
+                return false;
+            }
+            
+            return true;
+        }
+        
+        // Network connectivity monitoring
+        let isOnline = navigator.onLine;
+        window.addEventListener('online', () => {
+            isOnline = true;
+            updateGlobalStatus('Connection restored', 'success');
+        });
+        
+        window.addEventListener('offline', () => {
+            isOnline = false;
+            updateGlobalStatus('No internet connection', 'error');
+        });
+        
+        // Load saved API key on page load
+        window.onload = function() {
+            if (!checkBrowserCompatibility()) {
+                document.body.innerHTML = '<div style="padding: 2rem; text-align: center;"><h1>Browser Not Supported</h1><p>Please use a modern browser to access this tool.</p></div>';
+                return;
+            }
+            
+            try {
+                const savedKey = localStorage.getItem('claudeApiKey');
+                if (savedKey) {
+                    // Decode the obfuscated key
+                    const decoded = atob(savedKey);
+                    document.getElementById('apiKey').value = decoded;
+                    apiKey = decoded;
+                    document.getElementById('apiKeyStatus').innerHTML = '<span class="success">✓ API key loaded from storage</span>';
+                }
+                
+                // Load saved session if exists
+                const savedSession = localStorage.getItem('imageProcessingSession');
+                if (savedSession) {
+                    const session = JSON.parse(savedSession);
+                    if (session.timestamp && (Date.now() - session.timestamp < SESSION_DURATION_HOURS * 60 * 60 * 1000)) {
+                        if (confirm('Found a previous session. Would you like to restore it?')) {
+                            processedImages = session.images || [];
+                            if (processedImages.length > 0) {
+                                // Go directly to results
+                                currentStep = 5;
+                                displayResults();
+                            }
+                        } else {
+                            localStorage.removeItem('imageProcessingSession');
+                        }
+                    } else {
+                        // Session expired
+                        localStorage.removeItem('imageProcessingSession');
+                    }
+                }
+            } catch (error) {
+                logError('Error loading saved data:', error);
+                localStorage.removeItem('claudeApiKey'); // Clear corrupted data
+                localStorage.removeItem('imageProcessingSession');
+            }
+            
+            // Initialize wizard
+            initializeWizard();
+            
+            // Set up auto-save
+            setInterval(saveSession, AUTO_SAVE_INTERVAL);
+            
+            // Log version in development
+            if (!IS_PRODUCTION) {
+                console.log(`Image Alt Text Generator v${APP_VERSION}`);
+            }
+        };
+        
+        // Session management
+        function saveSession() {
+            if (processedImages.length > 0 && !isProcessing) {
+                try {
+                    const sessionData = {
+                        images: processedImages.slice(0, MAX_IMAGES), // Limit to prevent storage overflow
+                        timestamp: Date.now(),
+                        version: APP_VERSION
+                    };
+                    localStorage.setItem('imageProcessingSession', JSON.stringify(sessionData));
+                } catch (e) {
+                    // Silently fail if storage is full
+                    if (e.name === 'QuotaExceededError') {
+                        if (!IS_PRODUCTION) {
+                            console.warn('Local storage full - session not saved');
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Clear session when exporting
+        function clearSession() {
+            localStorage.removeItem('imageProcessingSession');
+            processedImages = [];
+        }
+        
+        // API Key Management
+        function toggleApiKeyVisibility() {
+            const input = document.getElementById('apiKey');
+            input.type = input.type === 'password' ? 'text' : 'password';
+        }
+        
+        function saveApiKey() {
+            const key = document.getElementById('apiKey').value.trim();
+            if (!key) {
+                document.getElementById('apiKeyStatus').innerHTML = '<span class="error">Please enter an API key</span>';
+                validateCurrentStep();
+                return;
+            }
+            
+            // Basic API key format validation
+            if (!key.startsWith('sk-ant-api') || key.length < 50) {
+                document.getElementById('apiKeyStatus').innerHTML = '<span class="error">Invalid API key format. Key should start with "sk-ant-api"</span>';
+                validateCurrentStep();
+                return;
+            }
+            
+            try {
+                // Simple obfuscation for localStorage (not true encryption, but better than plain text)
+                const obfuscated = btoa(key);
+                localStorage.setItem('claudeApiKey', obfuscated);
+                apiKey = key;
+                document.getElementById('apiKeyStatus').innerHTML = '<span class="success">✓ API key saved successfully</span>';
+                validateCurrentStep();
+            } catch (error) {
+                logError('Error saving API key:', error);
+                document.getElementById('apiKeyStatus').innerHTML = '<span class="error">Error saving API key</span>';
+                validateCurrentStep();
+            }
+        }
+        
+        // Language Management
+        function toggleMultiLanguage() {
+            const checked = document.getElementById('multiLanguage').checked;
+            document.getElementById('additionalLanguages').style.display = checked ? 'block' : 'none';
+        }
+        
+        function getSelectedLanguages() {
+            const languages = ['en']; // Always include English
+            if (document.getElementById('multiLanguage').checked) {
+                const checkboxes = document.querySelectorAll('#additionalLanguages input[type="checkbox"]:checked');
+                checkboxes.forEach(cb => languages.push(cb.value));
+            }
+            return languages;
+        }
+        
+        // File Upload Handlers
+        function handleDragOver(e) {
+            e.preventDefault();
+            e.currentTarget.classList.add('dragover');
+        }
+        
+        function handleDragLeave(e) {
+            e.currentTarget.classList.remove('dragover');
+        }
+        
+        function handleDrop(e) {
+            e.preventDefault();
+            e.currentTarget.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0 && files[0].type === 'application/zip') {
+                processZipFile(files[0]);
+            } else {
+                alert('Please upload a ZIP file');
+            }
+        }
+        
+        function handleFileSelect(e) {
+            const file = e.target.files[0];
+            if (file && file.type === 'application/zip') {
+                processZipFile(file);
+            } else {
+                alert('Please upload a ZIP file');
+            }
+        }
+        
+        // Single Image Handling
+        async function handleSingleImage(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            // Validation - ensure all steps are completed
+            for (let i = 1; i <= 3; i++) {
+                if (!validateStep(i)) {
+                    alert(`Please complete step ${i} first`);
+                    goToStep(i);
+                    return;
+                }
+            }
+            
+            // Check file size (5MB limit for individual images)
+            if (file.size > MAX_IMAGE_SIZE_MB * 1024 * 1024) {
+                alert(`Image size exceeds ${MAX_IMAGE_SIZE_MB}MB limit. Please use a smaller image.`);
+                return;
+            }
+            
+            // Check network connection
+            if (!isOnline) {
+                alert('No internet connection. Please check your connection and try again.');
+                return;
+            }
+            
+            // Hide results cards
+            document.getElementById('singleResultCard').style.display = 'none';
+            document.getElementById('resultsCard').style.display = 'none';
+            
+            // Show progress
+            document.getElementById('progressContainer').style.display = 'block';
+            updateProgress(0, 1, file.name);
+            
+            try {
+                // Convert to base64
+                const base64Data = await fileToBase64(file);
+                const mimeType = file.type || getMimeType(file.name);
+                
+                // Extract just the base64 data
+                const base64Only = base64Data.split(',')[1];
+                
+                // Validate image format
+                if (!validateImageFile(base64Only, mimeType)) {
+                    throw new Error('Invalid image format detected');
+                }
+                
+                // Process image
+                const result = await processImage(file.name, base64Only);
+                
+                // Display result
+                document.getElementById('progressContainer').style.display = 'none';
+                displaySingleResult(result);
+                
+                updateGlobalStatus('Image processed successfully!', 'success');
+                
+                // Clear file input to allow re-selection
+                document.getElementById('singleInput').value = '';
+                
+            } catch (error) {
+                console.error('Error processing single image:', error);
+                alert('Error processing image: ' + error.message);
+                document.getElementById('progressContainer').style.display = 'none';
+                updateGlobalStatus('Error processing image', 'error');
+            }
+        }
+        
+        function fileToBase64(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = error => reject(error);
+            });
+        }
+        
+        function displaySingleResult(result) {
+            document.getElementById('singleResultCard').style.display = 'block';
+            document.getElementById('singlePreview').src = result.preview;
+            document.getElementById('singleOriginal').textContent = result.originalName;
+            document.getElementById('singleNewName').value = result.newName;
+            document.getElementById('singleAltText').value = result.altText.en;
+            
+            // Display translations if any
+            const translationsDiv = document.getElementById('singleTranslations');
+            translationsDiv.innerHTML = '';
+            
+            Object.keys(result.altText).forEach(lang => {
+                if (lang !== 'en') {
+                    const group = document.createElement('div');
+                    group.className = 'form-group';
+                    group.innerHTML = `
+                        <div class="field-label">
+                            <label>Alt Text (${getLanguageName(lang)}):</label>
+                            <span class="help-icon">?
+                                <span class="help-tooltip">Translated alt text for ${getLanguageName(lang)}. Review and edit as needed.</span>
+                            </span>
+                        </div>
+                        <div style="display: flex; gap: 0.5rem;">
+                            <textarea id="single-${lang}" rows="3" style="flex: 1; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; resize: vertical;">${result.altText[lang]}</textarea>
+                            <button onclick="copyToClipboard('single-${lang}')" title="Copy to clipboard">📋</button>
+                        </div>
+                    `;
+                    translationsDiv.appendChild(group);
+                }
+            });
+            
+            // Auto-advance to results step
+            if (currentStep === 4) {
+                currentStep = 5;
+                updateWizardUI();
+            }
+        }
+        
+        function copyToClipboard(elementId) {
+            const element = document.getElementById(elementId);
+            if (!element) return;
+            
+            const text = element.value || element.textContent;
+            
+            if (!text || text.trim() === '') {
+                alert('No text to copy');
+                return;
+            }
+            
+            navigator.clipboard.writeText(text).then(() => {
+                // Show feedback
+                const button = event.target;
+                const originalText = button.textContent;
+                button.textContent = '✓';
+                button.style.backgroundColor = '#27ae60';
+                setTimeout(() => {
+                    button.textContent = originalText;
+                    button.style.backgroundColor = '';
+                }, 1500);
+            }).catch(err => {
+                // Fallback for older browsers
+                try {
+                    const textArea = document.createElement('textarea');
+                    textArea.value = text;
+                    textArea.style.position = 'fixed';
+                    textArea.style.left = '-9999px';
+                    document.body.appendChild(textArea);
+                    textArea.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(textArea);
+                    
+                    // Show success feedback
+                    const button = event.target;
+                    const originalText = button.textContent;
+                    button.textContent = '✓';
+                    button.style.backgroundColor = '#27ae60';
+                    setTimeout(() => {
+                        button.textContent = originalText;
+                        button.style.backgroundColor = '';
+                    }, 1500);
+                } catch (fallbackErr) {
+                    alert('Failed to copy to clipboard. Please copy manually.');
+                }
+            });
+        }
+        
+        function addToExportList() {
+            // Get current values
+            const result = {
+                originalName: document.getElementById('singleOriginal').textContent,
+                newName: document.getElementById('singleNewName').value,
+                altText: { en: document.getElementById('singleAltText').value },
+                dimensions: 'N/A',
+                fileSize: 'N/A',
+                status: 'Success',
+                preview: document.getElementById('singlePreview').src,
+                timestamp: new Date().toISOString()
+            };
+            
+            // Add translations
+            const languages = getSelectedLanguages();
+            languages.forEach(lang => {
+                if (lang !== 'en') {
+                    const textarea = document.getElementById(`single-${lang}`);
+                    if (textarea) {
+                        result.altText[lang] = textarea.value;
+                    }
+                }
+            });
+            
+            // Add to processed images
+            processedImages.push(result);
+            
+            // Show results table
+            displayResults();
+            
+            // Show success feedback
+            const button = event.target;
+            const originalText = button.textContent;
+            button.textContent = '✓ Added to Export List';
+            button.style.backgroundColor = '#27ae60';
+            
+            setTimeout(() => {
+                button.textContent = originalText;
+                button.style.backgroundColor = '';
+                
+                // Clear single result
+                document.getElementById('singleResultCard').style.display = 'none';
+                
+                // Scroll to results
+                document.getElementById('resultsCard').scrollIntoView({ behavior: 'smooth' });
+            }, 1500);
+        }
+        
+        async function processZipFile(file) {
+            // Validation - ensure all steps are completed
+            for (let i = 1; i <= 3; i++) {
+                if (!validateStep(i)) {
+                    alert(`Please complete step ${i} first`);
+                    goToStep(i);
+                    return;
+                }
+            }
+            
+            if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
+                alert(`File size exceeds ${MAX_FILE_SIZE_MB}MB limit`);
+                return;
+            }
+            
+            // Reset state
+            processedImages = [];
+            document.getElementById('resultsCard').style.display = 'none';
+            document.getElementById('singleResultCard').style.display = 'none';
+            document.getElementById('progressContainer').style.display = 'block';
+            
+            try {
+                const zip = await JSZip.loadAsync(file);
+                const imageFiles = [];
+                
+                // Extract image files
+                zip.forEach((relativePath, zipEntry) => {
+                    const ext = relativePath.split('.').pop().toLowerCase();
+                    const validExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'heic', 'heif'];
+                    if (validExtensions.includes(ext) && !zipEntry.dir) {
+                        imageFiles.push({ path: relativePath, entry: zipEntry });
+                    }
+                });
+                
+                if (imageFiles.length === 0) {
+                    alert('No valid image files found in the ZIP');
+                    document.getElementById('progressContainer').style.display = 'none';
+                    return;
+                }
+                
+                if (imageFiles.length > 100) {
+                    alert('Maximum 100 images allowed. Only the first 100 will be processed.');
+                    imageFiles.length = 100;
+                }
+                
+                // Show cost estimate
+                const estimatedCost = calculateCost(imageFiles.length);
+                if (!confirm(`Processing ${imageFiles.length} images will cost approximately ${estimatedCost.toFixed(4)} USD. Continue?`)) {
+                    document.getElementById('progressContainer').style.display = 'none';
+                    return;
+                }
+                
+                // Process each image
+                for (let i = 0; i < imageFiles.length; i++) {
+                    updateProgress(i, imageFiles.length, imageFiles[i].path);
+                    
+                    try {
+                        const imageData = await imageFiles[i].entry.async('base64');
+                        const result = await processImage(imageFiles[i].path, imageData);
+                        processedImages.push(result);
+                    } catch (error) {
+                        console.error(`Error processing ${imageFiles[i].path}:`, error);
+                        processedImages.push({
+                            originalName: imageFiles[i].path,
+                            newName: 'error.jpg',
+                            altText: { en: 'Error processing image' },
+                            dimensions: 'N/A',
+                            fileSize: 'N/A',
+                            status: 'Error',
+                            error: error.message
+                        });
+                    }
+                }
+                
+                // Show results
+                updateProgress(imageFiles.length, imageFiles.length, 'Complete!');
+                setTimeout(() => {
+                    document.getElementById('progressContainer').style.display = 'none';
+                    displayResults();
+                }, 1000);
+                
+            } catch (error) {
+                logError('Error processing ZIP file:', error);
+                alert('Error processing ZIP file: ' + error.message);
+                document.getElementById('progressContainer').style.display = 'none';
+            }
+        }
+        
+        function updateGlobalStatus(message, type = 'info') {
+            const statusEl = document.getElementById('globalStatus');
+            const colors = {
+                'info': '#3498db',
+                'success': '#27ae60',
+                'error': '#e74c3c',
+                'warning': '#f39c12'
+            };
+            
+            statusEl.style.color = colors[type] || colors.info;
+            statusEl.textContent = message;
+            
+            if (message) {
+                setTimeout(() => {
+                    statusEl.textContent = '';
+                }, 5000);
+            }
+        }
+        
+        // Update progress function to include global status
+        function updateProgress(current, total, filename) {
+            const percentage = Math.round((current / total) * 100);
+            document.getElementById('progressFill').style.width = percentage + '%';
+            document.getElementById('progressFill').textContent = percentage + '%';
+            document.getElementById('statusMessage').textContent = `Processing image ${current} of ${total}`;
+            document.getElementById('currentImage').textContent = filename || '';
+            
+            // Update global status
+            if (current === total) {
+                updateGlobalStatus('Processing complete!', 'success');
+                isProcessing = false;
+            } else {
+                isProcessing = true;
+            }
+        }
+        
+        async function processImage(filename, base64Data) {
+            const languages = getSelectedLanguages();
+            const mimeType = getMimeType(filename);
+            
+            // Create image for dimensions
+            const dimensions = await getImageDimensions(base64Data, mimeType);
+            
+            // Calculate file size more accurately
+            const fileSizeBytes = Math.round(base64Data.length * 0.75);
+            const fileSize = fileSizeBytes < 1024 ? fileSizeBytes + ' B' :
+                           fileSizeBytes < 1048576 ? Math.round(fileSizeBytes / 1024) + ' KB' :
+                           Math.round(fileSizeBytes / 1048576 * 10) / 10 + ' MB';
+            
+            // Validate image data before sending
+            if (!base64Data || base64Data.length < 100) {
+                throw new Error('Invalid image data');
+            }
+            
+            // For very large images, create a smaller preview to save memory
+            let preview = `data:${mimeType};base64,${base64Data}`;
+            if (base64Data.length > 500000) { // ~375KB
+                try {
+                    preview = await createThumbnail(base64Data, mimeType, 300, 300);
+                } catch (e) {
+                    if (!IS_PRODUCTION) {
+                        console.warn('Failed to create thumbnail, using original', e);
+                    }
+                }
+            }
+            
+            // Call Claude API with error handling
+            let claudeResponse;
+            try {
+                claudeResponse = await callClaudeAPI(base64Data, mimeType, filename, languages);
+            } catch (apiError) {
+                                    logError('API Error for ' + filename + ':', apiError);
+                claudeResponse = {
+                    filename: filename.toLowerCase().replace(/[^a-z0-9.]+/g, '-'),
+                    altText: { en: apiError.message || 'Error processing image' }
+                };
+                
+                // Add error message for other languages if requested
+                languages.forEach(lang => {
+                    if (lang !== 'en') {
+                        claudeResponse.altText[lang] = claudeResponse.altText.en;
+                    }
+                });
+            }
+            
+            return {
+                originalName: filename,
+                newName: claudeResponse.filename,
+                altText: claudeResponse.altText,
+                dimensions: dimensions,
+                fileSize: fileSize,
+                status: claudeResponse.altText.en.includes('Error') ? 'Error' : 'Success',
+                preview: preview,
+                timestamp: new Date().toISOString()
+            };
+        }
+        
+        // Helper function to create thumbnails for large images
+        function createThumbnail(base64Data, mimeType, maxWidth, maxHeight) {
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                img.onload = function() {
+                    try {
+                        const canvas = document.createElement('canvas');
+                        const ctx = canvas.getContext('2d');
+                        
+                        // Calculate new dimensions
+                        let width = img.width;
+                        let height = img.height;
+                        
+                        if (width > height) {
+                            if (width > maxWidth) {
+                                height = height * (maxWidth / width);
+                                width = maxWidth;
+                            }
+                        } else {
+                            if (height > maxHeight) {
+                                width = width * (maxHeight / height);
+                                height = maxHeight;
+                            }
+                        }
+                        
+                        canvas.width = width;
+                        canvas.height = height;
+                        ctx.drawImage(img, 0, 0, width, height);
+                        
+                        resolve(canvas.toDataURL(mimeType, 0.8));
+                    } catch (error) {
+                        reject(error);
+                    } finally {
+                        img.src = ''; // Clear the image source to free memory
+                    }
+                };
+                img.onerror = reject;
+                img.src = `data:${mimeType};base64,${base64Data}`;
+            });
+        }
+        
+        function getMimeType(filename) {
+            const ext = filename.split('.').pop().toLowerCase();
+            const mimeTypes = {
+                'jpg': 'image/jpeg',
+                'jpeg': 'image/jpeg',
+                'png': 'image/png',
+                'gif': 'image/gif',
+                'webp': 'image/webp',
+                'svg': 'image/svg+xml',
+                'heic': 'image/heic',
+                'heif': 'image/heif'
+            };
+            
+            if (!mimeTypes[ext] && !IS_PRODUCTION) {
+                console.warn(`Unknown file extension: ${ext}, defaulting to JPEG`);
+            }
+            
+            return mimeTypes[ext] || 'image/jpeg';
+        }
+        
+        function getImageDimensions(base64Data, mimeType) {
+            return new Promise((resolve) => {
+                const img = new Image();
+                const timeout = setTimeout(() => {
+                    img.src = ''; // Clear source
+                    resolve('N/A');
+                }, 5000); // 5 second timeout
+                
+                img.onload = function() {
+                    clearTimeout(timeout);
+                    const dimensions = `${this.width}x${this.height}`;
+                    // Clear the image to free memory
+                    img.src = '';
+                    resolve(dimensions);
+                };
+                
+                img.onerror = function() {
+                    clearTimeout(timeout);
+                    img.src = ''; // Clear source
+                    resolve('N/A');
+                };
+                
+                img.src = `data:${mimeType};base64,${base64Data}`;
+            });
+        }
+        
+        async function callClaudeAPI(imageBase64, mimeType, originalFilename, languages, retryCount = 0) {
+            // Validate inputs
+            if (!imageBase64 || !mimeType || !originalFilename || !languages || languages.length === 0) {
+                throw new Error('Invalid input parameters for API call');
+            }
+            
+            const isChartOrInfographic = originalFilename.toLowerCase().includes('chart') || 
+                                       originalFilename.toLowerCase().includes('graph') || 
+                                       originalFilename.toLowerCase().includes('infographic') ||
+                                       originalFilename.toLowerCase().includes('diagram') ||
+                                       originalFilename.toLowerCase().includes('table');
+            
+            const prompt = `Analyze this image and provide:
+
+1. An SEO-optimized filename (lowercase, hyphens between words, descriptive keywords, 3-6 words max)
+2. Alt text for accessibility (${isChartOrInfographic ? 'detailed description for charts/infographics' : 'max 155 characters'})
+
+Requirements:
+- Follow WCAG 2.1 guidelines
+- Be descriptive and specific
+- Do NOT mention race, ethnicity, or make assumptions about people's backgrounds
+- Focus on what's actually visible and relevant
+- For charts/infographics, provide detailed descriptions of all data and text
+
+Languages needed: ${languages.join(', ')}
+
+Respond in this exact JSON format:
+{
+  "filename": "seo-optimized-filename.jpg",
+  "altText": {
+    "en": "English alt text",
+    ${languages.filter(l => l !== 'en').map(lang => `"${lang}": "${getLanguageName(lang)} translation"`).join(',\n    ')}
+  }
+}`;
+
+            try {
+                // Create abort controller for timeout
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+                
+                const response = await fetch('https://api.anthropic.com/v1/messages', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'x-api-key': apiKey,
+                        'anthropic-version': '2023-06-01'
+                    },
+                    signal: controller.signal,
+                    body: JSON.stringify({
+                        model: 'claude-3-5-sonnet-20241022',
+                        max_tokens: 1024,
+                        messages: [{
+                            role: 'user',
+                            content: [
+                                {
+                                    type: 'image',
+                                    source: {
+                                        type: 'base64',
+                                        media_type: mimeType,
+                                        data: imageBase64
+                                    }
+                                },
+                                {
+                                    type: 'text',
+                                    text: prompt
+                                }
+                            ]
+                        }]
+                    })
+                });
+                
+                clearTimeout(timeoutId);
+                
+                if (!response.ok) {
+                    if (response.status === 429 && retryCount < 3) {
+                        // Rate limited - wait and retry
+                        await new Promise(resolve => setTimeout(resolve, 2000 * (retryCount + 1)));
+                        return callClaudeAPI(imageBase64, mimeType, originalFilename, languages, retryCount + 1);
+                    }
+                    throw new Error(`API error: ${response.status} - ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                
+                if (!data.content || !data.content[0] || !data.content[0].text) {
+                    throw new Error('Invalid API response structure');
+                }
+                
+                const content = data.content[0].text;
+                
+                // Parse JSON response with better error handling
+                const jsonMatch = content.match(/\{[\s\S]*\}/);
+                if (jsonMatch) {
+                    const parsed = JSON.parse(jsonMatch[0]);
+                    
+                    // Validate response structure
+                    if (!parsed.filename || !parsed.altText || !parsed.altText.en) {
+                        throw new Error('Invalid response format: missing required fields');
+                    }
+                    
+                    // Ensure filename has proper extension
+                    const ext = originalFilename.split('.').pop().toLowerCase();
+                    if (!parsed.filename.endsWith(`.${ext}`)) {
+                        parsed.filename = parsed.filename.replace(/\.[^.]+$/, '') + `.${ext}`;
+                    }
+                    
+                    return parsed;
+                } else {
+                    throw new Error('No valid JSON found in response');
+                }
+                
+            } catch (error) {
+                console.error('Claude API error:', error);
+                
+                if (error.name === 'AbortError') {
+                    throw new Error('Request timeout - please try again');
+                }
+                
+                // More specific error messages
+                if (error.message.includes('API error: 401')) {
+                    throw new Error('Invalid API key. Please check your key and try again.');
+                } else if (error.message.includes('API error: 429')) {
+                    throw new Error('Rate limit exceeded. Please wait a moment and try again.');
+                } else if (error.message.includes('Failed to fetch')) {
+                    throw new Error('Network error. Please check your internet connection.');
+                }
+                
+                // Fallback response with error indication
+                const ext = originalFilename.split('.').pop().toLowerCase();
+                return {
+                    filename: `image-${Date.now()}.${ext}`,
+                    altText: { en: 'Error generating description. Please retry or edit manually.' }
+                };
+            }
+        }
+        
+        function getLanguageName(code) {
+            const names = {
+                'es': 'Spanish',
+                'fr': 'French',
+                'de': 'German',
+                'it': 'Italian',
+                'pt': 'Portuguese',
+                'nl': 'Dutch',
+                'ja': 'Japanese',
+                'ko': 'Korean',
+                'zh': 'Chinese',
+                'ar': 'Arabic'
+            };
+            return names[code] || code;
+        }
+        
+        function displayResults() {
+            document.getElementById('resultsCard').style.display = 'block';
+            const tbody = document.getElementById('resultsBody');
+            tbody.innerHTML = '';
+            
+            processedImages.forEach((img, index) => {
+                const row = document.createElement('tr');
+                
+                // Add additional language columns if needed
+                const languages = Object.keys(img.altText);
+                let altTextCells = `<td contenteditable="true" class="editable" data-field="altText-en" data-index="${index}">${img.altText.en}</td>`;
+                
+                if (languages.length > 1) {
+                    // Add headers for additional languages
+                    const headerRow = document.querySelector('#resultsTable thead tr');
+                    languages.forEach(lang => {
+                        if (lang !== 'en' && !document.querySelector(`#resultsTable th[data-lang="${lang}"]`)) {
+                            const th = document.createElement('th');
+                            th.setAttribute('data-lang', lang);
+                            th.textContent = `Alt Text (${getLanguageName(lang)})`;
+                            headerRow.insertBefore(th, headerRow.children[4]);
+                        }
+                    });
+                    
+                    // Add cells for additional languages
+                    languages.forEach(lang => {
+                        if (lang !== 'en') {
+                            altTextCells += `<td contenteditable="true" class="editable" data-field="altText-${lang}" data-index="${index}">${img.altText[lang] || ''}</td>`;
+                        }
+                    });
+                }
+                
+                row.innerHTML = `
+                    <td><img src="${img.preview}" class="preview-image" alt="Preview"></td>
+                    <td>${img.originalName}</td>
+                    <td contenteditable="true" class="editable" data-field="newName" data-index="${index}">${img.newName}</td>
+                    ${altTextCells}
+                    <td>${img.dimensions}</td>
+                    <td>${img.fileSize}</td>
+                    <td style="color: ${img.status === 'Success' ? '#27ae60' : '#e74c3c'}">
+                        ${img.status === 'Success' ? '✓ ' : '❌ '}${img.status}
+                        ${img.error ? `<br><small style="color: #666;">${img.error}</small>` : ''}
+                    </td>
+                    <td>
+                        <button onclick="regenerateImage(${index})" style="padding: 0.5rem 1rem; font-size: 0.9rem;">🔄 Regenerate</button>
+                    </td>
+                `;
+                
+                tbody.appendChild(row);
+            });
+            
+            // Add event listeners for editing with debouncing
+            let editTimeout;
+            document.querySelectorAll('.editable').forEach(cell => {
+                cell.addEventListener('input', function() {
+                    clearTimeout(editTimeout);
+                    const element = this;
+                    
+                    editTimeout = setTimeout(() => {
+                        const index = parseInt(element.getAttribute('data-index'));
+                        const field = element.getAttribute('data-field');
+                        
+                        if (field === 'newName') {
+                            // Validate filename
+                            let newName = element.textContent.trim();
+                            newName = newName.toLowerCase().replace(/[^a-z0-9.-]+/g, '-');
+                            processedImages[index].newName = newName;
+                            
+                            // Update display if changed
+                            if (element.textContent !== newName) {
+                                element.textContent = newName;
+                            }
+                        } else if (field.startsWith('altText-')) {
+                            const lang = field.split('-')[1];
+                            processedImages[index].altText[lang] = element.textContent.trim();
+                        }
+                    }, 500); // Debounce for 500ms
+                });
+                
+                // Add aria-label for accessibility
+                const index = cell.getAttribute('data-index');
+                const field = cell.getAttribute('data-field');
+                const img = processedImages[index];
+                
+                if (field === 'newName') {
+                    cell.setAttribute('aria-label', `Edit SEO filename for ${img.originalName}`);
+                } else if (field.startsWith('altText-')) {
+                    const lang = field.split('-')[1];
+                    cell.setAttribute('aria-label', `Edit ${getLanguageName(lang)} alt text for ${img.originalName}`);
+                }
+            });
+            
+            // Update cost estimate
+            const totalCost = calculateCost(processedImages.length);
+            document.getElementById('costEstimate').textContent = `Estimated API cost: ${totalCost.toFixed(4)} USD`;
+        }
+        
+        function calculateCost(imageCount) {
+            // Claude 3.5 Sonnet pricing (as of 2024)
+            // Input: $3 per million tokens
+            // Output: $15 per million tokens
+            // Rough estimate: ~300 tokens per image request + ~200 tokens response
+            const tokensPerImage = 500;
+            const costPerMillionTokens = 18; // Combined input/output estimate
+            return (imageCount * tokensPerImage * costPerMillionTokens) / 1000000;
+        }
+        
+        async function regenerateImage(index) {
+            const img = processedImages[index];
+            if (!confirm(`Regenerate alt text and filename for "${img.originalName}"?`)) {
+                return;
+            }
+            
+            try {
+                const languages = getSelectedLanguages();
+                const claudeResponse = await callClaudeAPI(
+                    img.preview.split(',')[1], 
+                    getMimeType(img.originalName), 
+                    img.originalName, 
+                    languages
+                );
+                
+                processedImages[index].newName = claudeResponse.filename;
+                processedImages[index].altText = claudeResponse.altText;
+                
+                // Refresh display
+                displayResults();
+                
+            } catch (error) {
+                logError('Error regenerating:', error);
+                alert('Error regenerating content: ' + error.message);
+            }
+        }
+        
+        function downloadCSV() {
+            // Validate data before export
+            const issues = validateExportData();
+            if (issues.length > 0) {
+                const proceed = confirm(`Found ${issues.length} potential issues:\n\n${issues.slice(0, 5).join('\n')}${issues.length > 5 ? '\n...' : ''}\n\nContinue with export anyway?`);
+                if (!proceed) return;
+            }
+            
+            const languages = getSelectedLanguages();
+            let csv = 'Original Filename,New SEO Filename,Alt Text (English)';
+            
+            // Add language columns
+            languages.forEach(lang => {
+                if (lang !== 'en') {
+                    csv += `,Alt Text (${getLanguageName(lang)})`;
+                }
+            });
+            csv += ',Dimensions,File Size,Processing Date,Status\n';
+            
+            // Helper function to escape CSV values
+            function escapeCSV(value) {
+                if (value === null || value === undefined) return '""';
+                value = String(value);
+                
+                // Remove any formula injection attempts
+                if (value.startsWith('=') || value.startsWith('+') || value.startsWith('-') || value.startsWith('@')) {
+                    value = "'" + value;
+                }
+                
+                // Escape quotes and wrap in quotes if necessary
+                if (value.includes('"') || value.includes(',') || value.includes('\n')) {
+                    return '"' + value.replace(/"/g, '""') + '"';
+                }
+                return value;
+            }
+            
+            // Ensure unique filenames in export
+            const exportFilenames = new Set();
+            
+            // Add data rows
+            processedImages.forEach(img => {
+                // Generate unique filename if needed
+                const uniqueFilename = generateUniqueFilename(img.newName, exportFilenames);
+                
+                let row = [
+                    escapeCSV(img.originalName),
+                    escapeCSV(uniqueFilename),
+                    escapeCSV(img.altText.en)
+                ];
+                
+                languages.forEach(lang => {
+                    if (lang !== 'en') {
+                        row.push(escapeCSV(img.altText[lang] || ''));
+                    }
+                });
+                
+                row.push(
+                    escapeCSV(img.dimensions),
+                    escapeCSV(img.fileSize),
+                    escapeCSV(new Date(img.timestamp).toLocaleString()),
+                    escapeCSV(img.status)
+                );
+                
+                csv += row.join(',') + '\n';
+            });
+            
+            // Download with BOM for Excel compatibility
+            const BOM = '\uFEFF';
+            const blob = new Blob([BOM + csv], { type: 'text/csv;charset=utf-8' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+            a.download = `image-seo-data-${timestamp}.csv`;
+            a.click();
+            window.URL.revokeObjectURL(url);
+            
+            // Clear session after successful export
+            clearSession();
+        }
+        
+        function downloadExcel() {
+            // Validate data before export
+            const issues = validateExportData();
+            if (issues.length > 0) {
+                const proceed = confirm(`Found ${issues.length} potential issues:\n\n${issues.slice(0, 5).join('\n')}${issues.length > 5 ? '\n...' : ''}\n\nContinue with export anyway?`);
+                if (!proceed) return;
+            }
+            
+            const wb = XLSX.utils.book_new();
+            
+            // Prepare data for Excel
+            const data = [['Original Filename', 'New SEO Filename', 'Alt Text (English)', 'Dimensions', 'File Size', 'Processing Date', 'Status']];
+            
+            // Add language columns
+            const languages = getSelectedLanguages();
+            languages.forEach(lang => {
+                if (lang !== 'en') {
+                    data[0].splice(3, 0, `Alt Text (${getLanguageName(lang)})`);
+                }
+            });
+            
+            // Ensure unique filenames in export
+            const exportFilenames = new Set();
+            
+            processedImages.forEach(img => {
+                // Generate unique filename if needed
+                const uniqueFilename = generateUniqueFilename(img.newName, exportFilenames);
+                
+                const row = [
+                    img.originalName,
+                    uniqueFilename,
+                    img.altText.en || '',
+                    img.dimensions,
+                    img.fileSize,
+                    new Date(img.timestamp).toLocaleString(),
+                    img.status
+                ];
+                
+                // Insert additional language translations
+                let insertIndex = 3;
+                languages.forEach(lang => {
+                    if (lang !== 'en') {
+                        row.splice(insertIndex, 0, img.altText[lang] || '');
+                        insertIndex++;
+                    }
+                });
+                
+                data.push(row);
+            });
+            
+            const ws = XLSX.utils.aoa_to_sheet(data);
+            
+            // Apply styling
+            const range = XLSX.utils.decode_range(ws['!ref']);
+            
+            // Style header row
+            for (let C = range.s.c; C <= range.e.c; ++C) {
+                const address = XLSX.utils.encode_col(C) + '1';
+                if (!ws[address]) continue;
+                ws[address].s = {
+                    font: { bold: true, color: { rgb: "FFFFFF" } },
+                    fill: { fgColor: { rgb: "2C3E50" } },
+                    alignment: { horizontal: "center" }
+                };
+            }
+            
+            // Auto-size columns
+            const colWidths = [];
+            for (let C = range.s.c; C <= range.e.c; ++C) {
+                let maxWidth = 10;
+                for (let R = range.s.r; R <= range.e.r; ++R) {
+                    const address = XLSX.utils.encode_col(C) + XLSX.utils.encode_row(R);
+                    if (ws[address] && ws[address].v) {
+                        maxWidth = Math.max(maxWidth, String(ws[address].v).length);
+                    }
+                }
+                colWidths.push({ wch: Math.min(maxWidth + 2, 50) });
+            }
+            ws['!cols'] = colWidths;
+            
+            // Color code status column
+            for (let R = 1; R <= processedImages.length; ++R) {
+                const statusCol = languages.length + 5; // Adjust based on number of language columns
+                const address = XLSX.utils.encode_col(statusCol) + (R + 1);
+                if (ws[address] && ws[address].v === 'Success') {
+                    ws[address].s = { font: { color: { rgb: "27AE60" } } };
+                } else if (ws[address] && ws[address].v === 'Error') {
+                    ws[address].s = { font: { color: { rgb: "E74C3C" } } };
+                }
+            }
+            
+            // Add metadata sheet
+            const metaData = [
+                ['Export Date', new Date().toLocaleString()],
+                ['Total Images', processedImages.length],
+                ['Successful', processedImages.filter(img => img.status === 'Success').length],
+                ['Errors', processedImages.filter(img => img.status === 'Error').length],
+                ['Languages', languages.map(l => getLanguageName(l)).join(', ')],
+                ['Tool Version', APP_VERSION],
+                ['API Model', 'Claude 3.5 Sonnet']
+            ];
+            
+            const metaWs = XLSX.utils.aoa_to_sheet(metaData);
+            
+            XLSX.utils.book_append_sheet(wb, ws, "Image SEO Data");
+            XLSX.utils.book_append_sheet(wb, metaWs, "Metadata");
+            
+            // Generate filename with timestamp
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+            const filename = `image-seo-data-${timestamp}.xlsx`;
+            
+            XLSX.writeFile(wb, filename);
+            
+            // Clear session after successful export
+            clearSession();
+        }
+    </script>
+</body>
+</html>

@@ -1779,10 +1779,10 @@ Respond in this exact JSON format:
                 const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
                 
                 const response = await fetch('/api/claude', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ imageBase64, mimeType, prompt })
+                    }),
                     signal: controller.signal,
                     body: JSON.stringify({
                         model: 'claude-3-5-sonnet-20241022',

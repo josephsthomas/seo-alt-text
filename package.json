@@ -1,0 +1,12 @@
+{
+  "name": "image-alt-text-generator",
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "vercel dev",
+    "start": "vercel dev",
+    "build": "echo \"No build step needed\""
+  },
+  "dependencies": {
+    "node-fetch": "^2.6.7"
+  }
+}
